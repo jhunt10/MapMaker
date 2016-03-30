@@ -13,7 +13,7 @@ public class TileMap {
 	}
 	
 	public Tile get(int x, int y){
-		if(x > 0 && x < map.length && y > 0 && y < map[0].length)
+		if(x >= 0 && x < map.length && y >= 0 && y < map[0].length)
 			return map[x][y];
 		else
 			return null;
