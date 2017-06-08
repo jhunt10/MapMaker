@@ -1,61 +1,32 @@
 import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.image.BufferedImage;
-import java.util.Hashtable;
 
-import javax.swing.BorderFactory;
-import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.JToggleButton;
 
 public class ToolWindow extends JPanel{
-	
-	private static final int SIZE = 20;
-	private static final int SCALE = 2;
-	
-	private BufferedImage tileSet;
+
 	private JTabbedPane tabs;
 	private MatPanel[] mats;
 	private JLabel zoomLab, xLab, yLab, cLab;
 	private ImageIcon selectedRightLab, selectedLeftLab;
-	private JButton save, load, zoomIn, zoomOut;
+	private JButton save, load, newButton, zoomIn, zoomOut;
 	private String[] zoomText;
 	private int zoom;
-	private Tile[][] tiles;
 	private JButton pen, fill;
 	private JLabel penFill;
 	
-	public Tile selectedRight, selectedLeft;
+	private byte selectedRight, selectedLeft;
 	
-	public ToolWindow(Hashtable tilesIn, MouseListener ml, ActionListener al){
-		tiles = new Tile[8][16];
-		
-		int x = 0;
-		for(int n = 0; n<4; n++){
-			for(int i = 0; i<16; i++){
-				tiles[n][i] = (Tile)tilesIn.get((byte)(n*16 + i));
-			}
-			x++;
-		}
-		x=0;
-		for(int n = 4; n<8; n++){
-			for(int i = 0; i<16; i++){
-				tiles[n][i] = (Tile)tilesIn.get((byte)((n-4)*16 + i + 128));
-			}
-			x++;
-		}
-		
+	public ToolWindow(Tile[] tilesIn, MouseListener ml, ActionListener al)
+	{	
 		save = new JButton("Save");
 		save.setActionCommand("SAVE");
 		save.addActionListener(al);
@@ -63,6 +34,10 @@ public class ToolWindow extends JPanel{
 		load = new JButton("Load");
 		load.setActionCommand("LOAD");
 		load.addActionListener(al);
+		
+		newButton = new JButton("New");
+		newButton.setActionCommand("NEW");
+		newButton.addActionListener(al);
 		
 		pen = new JButton("Pen");
 		pen.setActionCommand("PEN");
@@ -75,10 +50,10 @@ public class ToolWindow extends JPanel{
 		fill.setSelected(false);
 		
 		penFill = new JLabel(" Pen ");
-		selectedLeftLab = new ImageIcon(tiles[0][0].scaledImage);
-		selectedLeft = tiles[0][0];
-		selectedRightLab = new ImageIcon(tiles[0][1].scaledImage);
-		selectedRight = tiles[0][1];
+		selectedLeft = 0;
+		selectedRight = 1;
+		selectedLeftLab = new ImageIcon(Controler.getTileByCode(selectedLeft).image);
+		selectedRightLab = new ImageIcon(Controler.getTileByCode(selectedRight).image);
 		
 		xLab = new JLabel(" X: ");
 		yLab = new JLabel(" Y: ");
@@ -106,14 +81,14 @@ public class ToolWindow extends JPanel{
 		mats = new MatPanel[8];
 		
 		tabs = new JTabbedPane();
-		mats[0] = new MatPanel("Base", tiles[0], ml);
-		mats[1] = new MatPanel("Passable 1", tiles[1], ml);
-		mats[2] = new MatPanel("Passable 2", tiles[2], ml);
-		mats[3] = new MatPanel("Passable 3", tiles[3], ml);
-		mats[4] = new MatPanel("Ass", tiles[4], ml);
-		mats[5] = new MatPanel("Blocked 1", tiles[5], ml);
-		mats[6] = new MatPanel("Blocked 2", tiles[6], ml);
-		mats[7] = new MatPanel("Blocked 3", tiles[7], ml);
+		mats[0] = new MatPanel("Base", 0, ml);
+		mats[1] = new MatPanel("Passable 1", 1, ml);
+		mats[2] = new MatPanel("Passable 2", 2, ml);
+		mats[3] = new MatPanel("Passable 3", 3, ml);
+		mats[4] = new MatPanel("Assets", 4, ml);
+		mats[5] = new MatPanel("Blocked 1", 5, ml);
+		mats[6] = new MatPanel("Blocked 2", 6, ml);
+		mats[7] = new MatPanel("Blocked 3", 7, ml);
 		
 		this.setLayout(new GridBagLayout());
 		GridBagConstraints c = new GridBagConstraints();
@@ -128,8 +103,11 @@ public class ToolWindow extends JPanel{
 		tabs.add(mats[6], "Block 2");
 		tabs.add(mats[7], "Block 3");
 		
+
+		this.add(newButton, c);
+		c.gridx++;
 		this.add(save, c);
-		c.gridx = 1;
+		c.gridx++;
 		this.add(load, c);
 		c.gridy++; c.gridx = 0;
 		
@@ -169,85 +147,106 @@ public class ToolWindow extends JPanel{
 		this.add(tabs, c);
 	}
 	
-	public void setTiles(Hashtable tilesIn){
-		tiles = new Tile[8][16];
-		int x = 0;
-		for(int n = 0; n<4; n++){
-			for(int i = 0; i<16; i++){
-				tiles[n][i] = (Tile)tilesIn.get((byte)(n*16 + i));
-			}
-			mats[n].setImages(tiles[n]);
-			x++;
-		}
-		x=0;
-		for(int n = 4; n<8; n++){
-			for(int i = 0; i<16; i++){
-				tiles[n][i] = (Tile)tilesIn.get((byte)((n-4)*16 + i + 128));
-			}
-			mats[n].setImages(tiles[n]);
-			x++;
+	public void resetTiles()
+	{
+		for(int n = 0; n < 8; n++)
+		{
+			mats[n].resetImages();
 		}
 		
 	}
 	
-	public JLabel getTile(int n){
+	public JLabel getTile(int n)
+	{
 		return mats[tabs.getSelectedIndex()].getTile(n);
 	}
 	
-	public void setMouseOver(int x, int y, boolean xb, boolean yb, Tile c){
-		if(xb) xLab.setForeground(Color.red);
-		else xLab.setForeground(Color.BLACK);
-		if(yb) yLab.setForeground(Color.red);
-		else yLab.setForeground(Color.BLACK);
+	public void setMouseOver(int x, int y, boolean xb, boolean yb, byte c)
+	{
+		if(xb) 
+			xLab.setForeground(Color.red);
+		else 
+			xLab.setForeground(Color.BLACK);
+		if(yb) 
+			yLab.setForeground(Color.red);
+		else 
+			yLab.setForeground(Color.BLACK);
 		xLab.setText(" X: "+x);
 		yLab.setText(" Y: "+y);
-		if(c != null)
-			cLab.setText(" C:" + c.code);
+		if(c != -1)
+			cLab.setText(" C:" + c);
 		else 
 			cLab.setText(" C: null");
 	}
 	
-	public void selectTile(MouseEvent e, String s){
-		for(int i=0; i<16; i++){
-			if(e.getSource().equals(mats[tabs.getSelectedIndex()].getTile(i))){
-				if(s == "RIGHT"){
-					selectedRight = tiles[tabs.getSelectedIndex()][i];
-					selectedRightLab.setImage(selectedRight.scaledImage);
-				} else {
-					selectedLeft = tiles[tabs.getSelectedIndex()][i];
-					selectedLeftLab.setImage(selectedLeft.scaledImage);
+	public void selectTile(MouseEvent e, String s)
+	{
+		for(int i=0; i<16; i++)
+		{
+			if(e.getSource().equals(mats[tabs.getSelectedIndex()].getTile(i)))
+			{
+				if(s == "RIGHT")
+				{
+					selectedRight = (byte)(tabs.getSelectedIndex() * 16 + i);  
+					selectedRightLab.setImage(Controler.getTileByCode(selectedRight).image);
+				}
+				else
+				{
+					selectedLeft = (byte)(tabs.getSelectedIndex() * 16 + i);;
+					selectedLeftLab.setImage(Controler.getTileByCode(selectedLeft).image);
 				}
 			}
 		}
 		this.repaint();
 	}
 	
-	public void zoom(String s){
-		if(s == "OUT"){
+	public void zoom(String s)
+	{
+		if(s == "OUT")
+		{
 			zoom--;
-			if(zoom < 0) zoom = 0;
+			if(zoom < 0) 
+				zoom = 0;
 			zoomLab.setText(zoomText[zoom]);
-		} else {
+		}
+		else
+		{
 			zoom++;
-			if(zoom > 5) zoom = 5;
+			if(zoom > 5) 
+				zoom = 5;
 			zoomLab.setText(zoomText[zoom]);
 		}
 	}
 	
-	public float getZoom(){
-		if(zoom == 0){
-			return (float)0.25;
-		} else if (zoom == 1){
-			return (float)0.5;
-		} else {
+	public float getZoom()
+	{
+		if(zoom == 0)
+		{
+			return 0.25f;
+		}
+		else if (zoom == 1)
+		{
+			return 0.5f;
+		}
+		else
+		{
 			return zoom-1;
 		}
 	}
 	
-	public void setPenFill(boolean b){
-			if(b)
-				penFill.setText(" Fill ");
-			else 
-				penFill.setText(" Pen ");
+	public void setPenFill(boolean b)
+	{
+		if(b)
+			penFill.setText(" Fill ");
+		else 
+			penFill.setText(" Pen ");
+	}
+	
+	public byte getSelected(int leftRight)
+	{
+		if(leftRight == Controler.LEFTMOUSE)
+			return this.selectedLeft;
+		else
+			return this.selectedRight;
 	}
 }
